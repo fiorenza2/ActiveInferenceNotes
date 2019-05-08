@@ -1,0 +1,82 @@
+\documentclass{article}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath, hyperref, amsfonts}
+
+\newcommand{\KL}{\text{KL}} 
+
+\title{Notes on Active Inferece}
+\author{Philip J. Ball}
+\date{May 2019}
+
+\begin{document}
+
+\maketitle
+
+\section{Introduction}
+
+Active Inference concerns itself with modelling the brain and its respective processes when interacting with the world through actions (hence active). Using a `free energy model', it is possible to show that optimal policies (i.e., a set of actions) are selected when this free energy is minimised. Before we discuss free energy approaches, the quantity we truly wish to minimise is the following (of which free energy is an approximation):
+\begin{align}
+    S = - \log p(o)
+\end{align}
+
+which is termed the `surprise'\footnote{An information theoretic perspective would be to consider that surprise is related to entropy, which is the expected value of $-\log p(o)$ (w.r.t. time). We state that an agent wishes to experience low entropy observations, which means that observations are predictable (and therefore manageable).}, and where $o$ is the set of observations. Alternatively, this can be seen as maximising the model evidence.
+
+This is motivated biologically through the fact that organisms wish to remain alive. To do this they must maintain homeostasis, which is done by minimising the surprising observations that that agent sees. The agent is able to do this by creating a generative model of the world.
+
+A simple abstraction would be to state that the world has a true `hidden state' $s^*$, which results in the observation $o$. The agent correspondingly has an internal state $s$, which it infers from $o$. Similarly, it can explain the observation by the reverse process of mapping its internal state to the observation. We therefore have the following distributions we wish to model; some likelihood $p(o|s)$, and some prior over internal states $p(s)$. Consider that we wish to maximise the quality of a joint model of the entire system, as this will aid with decision making, such as the inference of the posterior $p(s|o)$; this involves calculating the following:
+\begin{align}
+    p(o,s) = p(o|s)p(s).
+\end{align}
+
+In order to assess the efficacy of this model, we marginalise out the hidden states to calculate the Bayesian `evidence' of this model\footnote{A bit hand-wavey, but this makes sense because we can assume that the brain/organisms reason about the world with a Bayesian approach, and have internal models that update themselves using this framework}:
+\begin{align}
+    p(o) = \sum_s p(o,s).
+\end{align}
+
+In this simple case we observe that by maximising evidence (or minimising the negative log marginal likelihood, i.e., surprise), we improve how accurate our generative model is.
+
+In fact, we will show that by expanding the generative model to include policies (i.e., actions we take), maximising the evidence simultaneously results in learning a `better' model of the world (as given in the above example), and also dictates how an agent affects (through actions) the world to ensure its survival. These two mechanisms are referred to as `perception' and `action' respectively.
+
+\section{Variational Free Energy}
+
+Having established that minimising surprise is important, we observed that calculating this quantity requires a marginalisation/summing over our model's internal states $s$. In reality this may be very difficult, as there could exist a large number of such states, and having to evaluate this quantity for all updates of our model is likely intractable. Instead we utilise a variational approximation to this quantity which is tractable, and leverage a method called variational inference\footnote{\href{https://www.cs.princeton.edu/courses/archive/fall11/cos597C/lectures/variational-inference-i.pdf}{David Blei's Excellent VI notes}}. Effectively, by introducing proxy distributions we can estimate quantities of interest (such as posterior distributions) instead of having to calcuate them directly. 
+
+Active inference somewhat eschews the traditional variational machine learning rationale of reducing a KL-divergence between an approximate distribution over parameters and their true posterior (given data); instead we are looking for a way to calculate the model evidence/suprise in a tractable manner, and as we will see, the usual machine learning objective in fact falls out naturally. With this in mind, it's more intuitive to approach the variational approximation by considering the summation of interest (using surprise):
+\begin{align}
+    -\log p(o) &= - \log \sum_s p(o,s)\\
+                &= - \log \sum_s q(s) \frac{p(o,s)}{q(s)}\\
+                &\leq - \sum_s q(s) \log \frac{p(o,s)}{q(s)} \label{eq:jensen}\\
+                &= \sum_s q(s) \log \frac{q(s)}{p(o,s)} \label{eq:vfe}
+\end{align}
+
+where Eq.\ \ref{eq:jensen} is obtained using Jensen's inequality. Observing Eq.\ \ref{eq:vfe}, this is what is referred to as the variational free energy $F$, and we note that this is simply an upper bound on the true quantity of interest, the surprise. To make this link more concrete, we can further manipulate the variational free energy quantity:
+\begin{align}
+    F &= \sum_s q(s) \log \frac{q(s)}{p(o,s)}\\
+      &= \sum_s q(s) \log \frac{q(s)}{p(s|o)p(o)}\\
+      &= \sum_s q(s) \left( \log \frac{q(s)}{p(s|o)} - \log p(o)\right)\\
+      &= D_\KL(q(s)||p(s|o)) - \log p(o)
+\end{align}
+
+Rearranging the last equation makes the connection between surprise and variational free energy explicit:
+\begin{align}
+    F &= D_\KL(q(s)||p(s|o)) - \log p(o) \label{eq:vfe2}\\
+    - \log p(o) &= F - D_\KL(q(s)||p(s|o))
+\end{align}
+
+and since KL-divergence is always non-negative, this drives home the point that variational free energy upper bounds the surprise (which we wish to minimise). Considering the limiting case of a perfect approximation to the posterior such that $q(s) \equiv p(s|o)$; minimising the variational free energy must therefore be equivalent to minimising surprise.
+
+Now that we have established that minimising variational free energy is a valid surrogate objective to minimising surprise, we must determine how we can do this. Rewriting variational free energy again:
+\begin{align}
+    F &= \sum_s q(s) \log \frac{q(s)}{p(o,s)}\\
+      &= \sum_s q(s) \log \frac{q(s)}{p(o|s)p(s)}\\
+      &= \sum_s q(s) \log \left( \frac{q(s)}{p(s)} - \log p(o|s) \right)\\
+      &= \underbrace{D_\KL(q(s)||p(s))}_{complexity} - \underbrace{\mathbb{E}_{s\sim q(s)}[\log p(o|s)}_{accuracy}]
+\end{align}
+
+which means we wish to have an accurate posterior prediction (as seen in the second term), but not at the cost of making the model overly complex with respect to a prior over the hidden states. The whole goal of this decomposition is to make $F$ tractable, and whilst the complexity term is usually easy to compute (usually there exists an analytical expression), the accuracy term merits further investigation. As aforementioned, we are also interested in policies, as these define the actions we take in an environment (hence `active' inference). However, the current form of accuracy does not allow us to do this, as there is no ability to reason about future outcomes $o$. 
+
+\section{Expected Free Energy}
+
+We need to take into account the fact that 
+
+\end{document}
