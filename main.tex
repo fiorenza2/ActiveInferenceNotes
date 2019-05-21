@@ -39,7 +39,7 @@ In fact, we will show that by expanding the generative model to include policies
 
 \section{Variational Free Energy}
 
-Having established that minimising surprise is important, we observed that calculating this quantity requires a marginalisation/summing over our model's internal states $s$. In reality this may be very difficult, as there could exist a large number of such states, and having to evaluate this quantity for all updates of our model is likely intractable. Instead we utilise a variational approximation to this quantity which is tractable, and leverage a method called variational inference\footnote{\href{https://www.cs.princeton.edu/courses/archive/fall11/cos597C/lectures/variational-inference-i.pdf}{David Blei's Excellent VI notes}}. Effectively, by introducing proxy distributions we can estimate quantities of interest (such as posterior distributions) instead of having to calcuate them directly. 
+Having established that minimising surprise is important, we observed that calculating this quantity requires a marginalisation/summing over our model's internal states $s$. In reality this may be very difficult, as there could exist a large number of such states, and having to evaluate this quantity for all updates of our model is likely intractable. Instead we utilise a variational approximation to this quantity which is tractable, and leverage a method called variational inference\footnote{\href{https://www.cs.princeton.edu/courses/archive/fall11/cos597C/lectures/variational-inference-i.pdf}{David Blei's Excellent VI notes}, also see David MacKay's \href{https://www.inference.org.uk/itprnn/book.pdf}{ITILA book}}. Effectively, by introducing proxy distributions we can estimate quantities of interest (such as posterior distributions) instead of having to calcuate them directly. 
 
 Active inference somewhat eschews the traditional variational machine learning rationale of reducing a KL-divergence between an approximate distribution over parameters and their true posterior (given data); instead we are looking for a way to calculate the model evidence/suprise in a tractable manner, and as we will see, the usual machine learning objective in fact falls out naturally. With this in mind, it's more intuitive to approach the variational approximation by considering the summation of interest (using surprise):
 \begin{align}
@@ -77,6 +77,24 @@ which means we wish to have an accurate posterior prediction (as seen in the sec
 
 \section{Expected Free Energy}
 
-We need to take into account the fact that 
+We need to take into account the fact that our agent must act in the world, and therefore we should like to minimise not only our instantaneous variational free energy, but also our variational free energy in the future. Our agent is able to impact the future by taking actions, which are selected according to a policy. Therefore we need to take an expectation with respect to these policies to estimate future rewards. Returning to the original variational free energy:
+\begin{align}
+    F &= \sum_s q(s) \log \frac{q(s)}{p(o,s)}\\
+    F(\tau,\pi) &= \sum_{s_\tau} q(s_\tau|\pi) \log \frac{q(s_\tau|\pi)}{p(\tilde{o},s_\tau|\pi)}\\
+    G(\tau,\pi) &= \sum_{s_\tau,o_\tau} p(o_\tau|s_\tau)  q(s_\tau|\pi) \log \frac{q(s_\tau|\pi)}{p(o_\tau,s_\tau|\tilde{o},\pi)}
+\end{align}
+where $\tilde{o}$ represents the observations up to the current time. Observe that an additional expectation is taken over $p(o_\tau|s_\tau)$, which captures the idea of predicting future outcomes given future hidden states.
+
+Using similar analysis to before, we can split the expected free energy into various different components and examine the impact of reducing of this quantity.
+
+\begin{align}
+    G(\tau,\pi) &= \sum_{s_\tau,o_\tau} p(o_\tau|s_\tau)  q(s_\tau|\pi) \log \frac{q(s_\tau|\pi)}{p(o_\tau,s_\tau|\tilde{o},\pi)}\\
+            &= E_{\tilde{q}} \left[\log(q(s_\tau|\pi) - \log(p(o_\tau,s_\tau|\tilde{o},\pi))\right]\\
+            &= E_{\tilde{q}} \left[\log(q(s_\tau|\pi) - \log(p(s_\tau|o_\tau,\tilde{o},\pi)) - \log(p(o_\tau))\right]\\
+            &\approx \underbrace{E_{\tilde{q}} \left[ \log(q(s_\tau|\pi) - \log(q(s_\tau|o_\tau,\pi))\right]}_{\text{-ve mutual information}}  - \underbrace{E_{\tilde{q}}\left[\log(p(o_\tau)) \right]}_{\text{expected log evidence}}\\
+            &= \underbrace{E_{\tilde{q}} \left[ \log(q(o_\tau|\pi) - \log(q(o_\tau|s_\tau,\pi))\right]}_\text{-ve epistemic value}  - \underbrace{E_{\tilde{q}}\left[\log(p(o_\tau)) \right]}_\text{extrinsic value}\\
+            &= \underbrace{D_\KL(q(o_\tau|\pi)||p(o_\tau))}_\text{complexity cost} -
+            \underbrace{E_{q(s_\tau|\pi)}\left[H[p(o_\tau|s_\tau)] \right]}_\text{expected ambiguity}\\
+\end{align}
 
 \end{document}
