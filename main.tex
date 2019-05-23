@@ -91,10 +91,16 @@ Using similar analysis to before, we can split the expected free energy into var
     G(\tau,\pi) &= \sum_{s_\tau,o_\tau} p(o_\tau|s_\tau)  q(s_\tau|\pi) \log \frac{q(s_\tau|\pi)}{p(o_\tau,s_\tau|\tilde{o},\pi)}\\
             &= E_{\tilde{q}} \left[\log(q(s_\tau|\pi) - \log(p(o_\tau,s_\tau|\tilde{o},\pi))\right]\\
             &= E_{\tilde{q}} \left[\log(q(s_\tau|\pi) - \log(p(s_\tau|o_\tau,\tilde{o},\pi)) - \log(p(o_\tau))\right]\\
-            &\approx \underbrace{E_{\tilde{q}} \left[ \log(q(s_\tau|\pi) - \log(q(s_\tau|o_\tau,\pi))\right]}_{\text{-ve mutual information}}  - \underbrace{E_{\tilde{q}}\left[\log(p(o_\tau)) \right]}_{\text{expected log evidence}}\\
-            &= \underbrace{E_{\tilde{q}} \left[ \log(q(o_\tau|\pi) - \log(q(o_\tau|s_\tau,\pi))\right]}_\text{-ve epistemic value}  - \underbrace{E_{\tilde{q}}\left[\log(p(o_\tau)) \right]}_\text{extrinsic value}\\
-            &= \underbrace{D_\KL(q(o_\tau|\pi)||p(o_\tau))}_\text{complexity cost} -
-            \underbrace{E_{q(s_\tau|\pi)}\left[H[p(o_\tau|s_\tau)] \right]}_\text{expected ambiguity}\\
+            &\approx \underbrace{E_{\tilde{q}} \left[ \log(q(s_\tau|\pi) - \log(q(s_\tau|o_\tau,\pi))\right]}_{\text{-ve mutual information}}  - \underbrace{E_{\tilde{q}}\left[\log(p(o_\tau)) \right]}_{\text{expected log evidence}}\label{eq:v1}\\
+            &= \underbrace{E_{\tilde{q}} \left[ \log(q(o_\tau|\pi) - \log(q(o_\tau|s_\tau,\pi))\right]}_\text{-ve epistemic value}  - \underbrace{E_{\tilde{q}}\left[\log(p(o_\tau)) \right]}_\text{extrinsic value}\label{eq:v2}\\
+            &= \underbrace{D_\KL(q(o_\tau|\pi)||p(o_\tau))}_\text{expected cost}+
+            \underbrace{E_{q(s_\tau|\pi)}\left[H[p(o_\tau|s_\tau)] \right]}_\text{expected ambiguity}\label{eq:v3}
 \end{align}
+where the following notation/assumptions are made: $\tilde{q} = p(o_\tau|s_\tau)q(s_\tau|\pi) \approx p(o_\tau,s_\tau|\tilde{o},\pi)$; $q(o_\tau|s_\tau,\pi)=p(o_\tau|s_\tau)$.
 
+Minimising expected free energy, we can view Eqs \ref{eq:v1} and \ref{eq:v2} as roughly equivalent; we want to maxmimise the amount of information gained between the environment and the latent state of the model (i.e., maximising Bayesian surprise/epistemic value) whilst maxmising the expected preferences (i.e., maximising reward/extrinsic value). This is clearly a trade-off; the former promotes curious behaviour, with exploration clearly encouraged as we seek out states we can't explain, whilst the latter encourages exploitative behaviour, maximising the expectation over our preferences given the model behaviour.
+
+Eq \ref{eq:v3} offers an alternative slant on the same objective; namely we wish to minimise the expected ambiguity whilst minimising how much our observations (given a policy) deviate from our preferences $p(o_\tau)$. Regarding ambiguity, this is the expectation of the entropy under our current policy; intuitively if our entropy is low, this suggests we are confident in mappings of observations from states, thus things are low in ambiguity. Regarding the expected cost, we clearly would like to create policy to observation mappings that resemble our preferences, hence reducing the KL divergence between predicted outcomes and preferred outcomes allows us to do this.
+
+What is perhaps most interesting from this formulation is that active inference agents appear to be naturally curious; they wish to seek observations that maximise the Bayesian surprise we have with respect to the world.
 \end{document}
